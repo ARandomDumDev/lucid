@@ -1,8 +1,8 @@
 name: Lucid
 options:
-  bundleIdPrefix: com.lucid
+  bundleIdPrefix: com.randomaticstudios
   deploymentTarget:
-    iOS: "16.0"
+    iOS: "26.0"
 settings:
   base:
     SWIFT_VERSION: "5.0"
@@ -15,8 +15,9 @@ targets:
       - Lucid
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.lucid.dream
+        PRODUCT_BUNDLE_IDENTIFIER: com.randomaticstudios.lucid
         PRODUCT_NAME: Lucid
         GENERATE_INFOPLIST_FILE: "YES"
         INFOPLIST_KEY_CFBundleDisplayName: Lucid
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
