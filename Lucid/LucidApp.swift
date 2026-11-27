@@ -173,14 +173,18 @@ private struct LucidBootSequence: View {
                 } else if phase == .wordmark {
                     ZStack {
                         Color.black.ignoresSafeArea()
-                        VStack(spacing: 22) {
-                            Image(systemName: "moon.stars.fill")
-                                .font(.system(size: 50, weight: .regular))
-                                .foregroundStyle(LucidPalette.mist)
-                            Text("lucid")
-                                .font(.system(size: 28, weight: .medium, design: .rounded))
-                                .tracking(-0.8)
-                                .foregroundStyle(LucidPalette.mist)
+
+                        Image("AppleBootLogo")
+                            .resizable()
+                            .renderingMode(.template)
+                            .aspectRatio(contentMode: .fit)
+                            .frame(width: 96, height: 96)
+                            .foregroundStyle(.white)
+                            .accessibilityLabel("Apple logo")
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                        VStack {
+                            Spacer()
                             Button {
                                 dismiss()
                             } label: {
@@ -192,6 +196,7 @@ private struct LucidBootSequence: View {
                             }
                             .buttonStyle(.plain)
                         }
+                        .padding(.bottom, 32)
                     }
                 } else {
                     Color.black.ignoresSafeArea()
