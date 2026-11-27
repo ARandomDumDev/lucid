@@ -17,5 +17,6 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.lucid.dream
         PRODUCT_NAME: Lucid
+        GENERATE_INFOPLIST_FILE: "YES"
         INFOPLIST_KEY_CFBundleDisplayName: Lucid
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
