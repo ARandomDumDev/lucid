@@ -1,23 +1,17 @@
-# Lucid
+### DOES NOT WORK YET ITLL WORK WHEN THIS MESSAGE IS REMOVED
+
+# lucid
 
 Your phone is dreaming.
 
-Lucid is a native iPhone and iPad interface concept inspired by a
-different state of iOS. Choose Cydia, Zebra, or recommended Sileo and
-follow the staged setup simulation with a sample app shelf. The logs and
-app transfers are simulated; no jailbreak code runs and no packages
-are downloaded or installed, and the boot screen does not reboot iOS.
-On first launch, a notice explains the in-app boot animation; it ends
-with Lucid branding and does not close the app.
-The displayed iOS 7–iOS 27 range describes visual inspiration, not OS
-compatibility; the app requires iOS 26 or later.
-A 512 KB request to Cloudflare's speed test measures the active
-connection and scales the simulated transfer timing; if it fails, a
-typical simulated rate is available. Device details show the device
-family and iOS version. App-selection tiles use SF Symbols
+# what is it
+A new all in one iDevice tool, it can jailbreak your device, it can semi-jailbreak, it can change MobileGestalt, it just depends on the software and hardware supported, you just need to make sure your phone isn't too caffeinated! It’s like lucid dreaming, but for your iPhone
+ 
+  # boring legal stuff
+App-selection tiles use SF Symbols
 because redistribution permission for those apps' artwork was not
 clear. Package-manager icon attributions and licenses are in
-[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and in [LICENSES](LICENSES).
 
 ## Build an IPA
 
