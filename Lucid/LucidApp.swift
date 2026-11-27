@@ -455,7 +455,7 @@ struct ContentView: View {
     ]
 
     private var selectedApps: [PreviewApp] {
-        apps.filter { selectedAppNames.contains(₱0.00 PHP.name) }
+        apps.filter { selectedAppNames.contains($0.name) }
     }
 
     var body: some View {
