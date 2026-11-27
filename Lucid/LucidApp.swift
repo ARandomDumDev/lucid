@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import UIKit
 
 @main
 struct LucidApp: App {
@@ -10,7 +11,37 @@ struct LucidApp: App {
     }
 }
 
-private struct LucidBootPreview: View {
+private enum DeviceProfile {
+    static var family: String {
+        switch UIDevice.current.userInterfaceIdiom {
+        case .phone: return "iPhone"
+        case .pad: return "iPad"
+        default: return UIDevice.current.localizedModel
+        }
+    }
+
+    static var deviceSummary: String {
+        "\(family) · iOS \(UIDevice.current.systemVersion)"
+    }
+
+    static var heroTitle: String {
+        "Your \(family)\nis dreaming."
+    }
+
+    static var heroSubtitle: String {
+        UIDevice.current.userInterfaceIdiom == .pad
+            ? "A wider canvas, in a different state."
+            : "A new state of iOS."
+    }
+
+    static var bootHeadline: String {
+        "Waking into a new state on \(family)."
+    }
+
+    static let styleRange = "iOS 7 – iOS 27"
+}
+
+private struct LucidBootSequence: View {
         @Environment(\.dismiss) private var dismiss
         @State private var visibleLogCount = 0
 
@@ -19,8 +50,10 @@ private struct LucidBootPreview: View {
 
         private var logLines: [String] {
             [
-                "LucidPreview: sequence started",
-                "Session: validating local preview state",
+                "LucidSimulation: sequence started",
+                "Device: \(DeviceProfile.deviceSummary)",
+                "Style: inspired by \(DeviceProfile.styleRange)",
+                "Session: validating local simulation state",
                 "Session: restoring \(managerName) selection",
                 "AppShelf: restoring \(appNames.count) selected tiles",
                 "Assets: resolving package manager mark",
@@ -31,7 +64,7 @@ private struct LucidBootPreview: View {
                 "UI: preparing boot activity surface",
                 "Animation: starting moonlight transition",
                 "Renderer: composing initial frame",
-                "LucidPreview: ready"
+                "LucidSimulation: ready"
             ]
         }
 
@@ -56,7 +89,7 @@ private struct LucidBootPreview: View {
 
                             Spacer()
 
-                            Text("PREVIEW")
+                            Text("SIMULATION")
                                 .font(.system(size: 9, weight: .semibold, design: .monospaced))
                                 .tracking(1)
                                 .foregroundStyle(LucidPalette.blue)
@@ -71,13 +104,13 @@ private struct LucidBootPreview: View {
                                 .foregroundStyle(LucidPalette.blue)
                                 .padding(.bottom, 8)
 
-                            Text("Waking into a new state.")
+                            Text(DeviceProfile.bootHeadline)
                                 .font(.system(size: 29, weight: .medium, design: .rounded))
                                 .tracking(-0.8)
                                 .foregroundStyle(LucidPalette.mist)
                                 .fixedSize(horizontal: false, vertical: true)
 
-                            Text("Lucid boot sequence")
+                            Text(DeviceProfile.deviceSummary)
                                 .font(.system(size: 14))
                                 .foregroundStyle(LucidPalette.muted)
                         }
@@ -236,7 +269,7 @@ struct ContentView: View {
     @State private var measuredMbps: Double?
     @State private var connectionError: String?
     @State private var isMeasuring = false
-    @State private var showBootPreview = false
+    @State private var showBootSequence = false
 
     private let apps = [
         PreviewApp(name: "Filza", symbol: "folder.fill", tint: Color(red: 0.96, green: 0.68, blue: 0.27), sizeMiB: 5.2),
@@ -265,6 +298,7 @@ struct ContentView: View {
                     VStack(alignment: .leading, spacing: 26) {
                         header
                         hero
+                        deviceInfoCard
                         flowContent
 
                         if !activity.isEmpty {
@@ -283,8 +317,8 @@ struct ContentView: View {
 
         }
         .preferredColorScheme(.dark)
-        .fullScreenCover(isPresented: $showBootPreview) {
-            LucidBootPreview(
+        .fullScreenCover(isPresented: $showBootSequence) {
+            LucidBootSequence(
                 managerName: selectedManager?.name ?? "Sileo",
                 appNames: selectedApps.map(\.name)
             )
@@ -316,7 +350,7 @@ struct ContentView: View {
                 Circle()
                     .fill(LucidPalette.blue)
                     .frame(width: 6, height: 6)
-                Text("PREVIEW")
+                Text("SIMULATION")
                     .font(.system(size: 9, weight: .semibold, design: .monospaced))
                     .tracking(1)
             }
@@ -329,19 +363,52 @@ struct ContentView: View {
 
     private var hero: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Your phone\nis dreaming.")
+            Text(DeviceProfile.heroTitle)
                 .font(.system(size: 46, weight: .medium, design: .rounded))
                 .tracking(-2)
                 .foregroundStyle(LucidPalette.mist)
                 .fixedSize(horizontal: false, vertical: true)
                 .minimumScaleFactor(0.75)
 
-            Text("A new state of iOS.")
+            Text(DeviceProfile.heroSubtitle)
                 .font(.system(size: 16))
                 .foregroundStyle(LucidPalette.muted)
         }
         .padding(.top, 24)
         .padding(.bottom, 2)
+    }
+
+    private var deviceInfoCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Label("Device info", systemImage: "info.circle")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(LucidPalette.mist)
+                Spacer()
+                Text(DeviceProfile.deviceSummary)
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundStyle(LucidPalette.blue)
+            }
+
+            HStack(alignment: .firstTextBaseline) {
+                Text("STYLE RANGE")
+                    .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                    .tracking(0.8)
+                    .foregroundStyle(LucidPalette.muted)
+                Spacer()
+                Text(DeviceProfile.styleRange)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(LucidPalette.mist)
+            }
+
+            Text("Visual inspiration only; this is not an OS compatibility range.")
+                .font(.system(size: 10))
+                .foregroundStyle(LucidPalette.muted)
+        }
+        .padding(16)
+        .background(LucidPalette.surface, in: RoundedRectangle(cornerRadius: 20))
+        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 20))
+        .overlay(RoundedRectangle(cornerRadius: 20).stroke(LucidPalette.border, lineWidth: 1))
     }
 
     @ViewBuilder
@@ -470,7 +537,7 @@ struct ContentView: View {
             HStack(spacing: 8) {
                 Image(systemName: "wifi")
                     .foregroundStyle(LucidPalette.blue)
-                Text("A 512 KB connection sample sets preview transfer timing.")
+                Text("Simulated transfer timing follows your connection speed.")
                     .foregroundStyle(LucidPalette.muted)
             }
             .font(.system(size: 11))
@@ -489,7 +556,7 @@ struct ContentView: View {
                     Text(connectionError)
                         .font(.system(size: 12))
                         .foregroundStyle(Color.orange)
-                    Button("Continue at typical preview speed") {
+                    Button("Continue at typical simulated speed") {
                         self.connectionError = nil
                         beginDownloads(using: 35)
                     }
@@ -566,7 +633,7 @@ struct ContentView: View {
                 Text("Preparing your dream")
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(LucidPalette.mist)
-                Text(String(format: "Preview rate · %.1f Mbps", measuredMbps ?? 35))
+                Text(String(format: "Simulated rate · %.1f Mbps", measuredMbps ?? 35))
                     .font(.system(size: 12, design: .monospaced))
                     .foregroundStyle(LucidPalette.muted)
             }
@@ -624,8 +691,8 @@ struct ContentView: View {
                 }
             }
 
-            primaryButton(title: "View Lucid boot preview", disabled: false) {
-                showBootPreview = true
+            primaryButton(title: "View boot sequence", disabled: false) {
+                showBootSequence = true
             }
 
             Button("Dream again") {
@@ -648,7 +715,7 @@ struct ContentView: View {
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(LucidPalette.mist)
                 Spacer()
-                Text("PREVIEW")
+                Text("SIMULATION")
                     .font(.system(size: 9, weight: .semibold, design: .monospaced))
                     .tracking(0.8)
                     .foregroundStyle(LucidPalette.blue)
@@ -760,12 +827,12 @@ struct ContentView: View {
         withAnimation(.easeInOut(duration: 0.3)) {
             stage = .downloading
         }
-        record(String(format: "Preparing %d app previews at %.1f Mbps", selectedApps.count, megabitsPerSecond))
+        record(String(format: "Preparing %d simulated app transfers at %.1f Mbps", selectedApps.count, megabitsPerSecond))
 
-        let appsToPreview = selectedApps
+        let appsToTransfer = selectedApps
         Task { @MainActor in
             do {
-                for app in appsToPreview {
+                for app in appsToTransfer {
                     record(String(format: "Starting %@ · %.1f MB", app.name, app.sizeMiB))
                     let seconds = min(6.0, max(0.8, app.sizeMiB * 8 / megabitsPerSecond * 1.5))
                     let interval = UInt64(seconds * 100_000_000)
@@ -781,13 +848,13 @@ struct ContentView: View {
                     record("\(app.name) ready for the app shelf")
                 }
 
-                record("Selected app previews are ready")
+                record("Selected apps are ready in the Lucid simulation")
                 withAnimation(.easeInOut(duration: 0.3)) {
                     stage = .complete
                 }
             } catch {
                 connectionError = error.localizedDescription
-                record("Preview transfer stopped: \(error.localizedDescription)")
+                record("Simulated transfer stopped: \(error.localizedDescription)")
                 withAnimation(.easeInOut(duration: 0.3)) {
                     stage = .appSelection
                 }
