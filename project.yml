@@ -1,0 +1,21 @@
+name: Lucid
+options:
+  bundleIdPrefix: com.lucid
+  deploymentTarget:
+    iOS: "16.0"
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    TARGETED_DEVICE_FAMILY: "1,2"
+targets:
+  Lucid:
+    type: application
+    platform: iOS
+    sources:
+      - Lucid
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.lucid.dream
+        PRODUCT_NAME: Lucid
+        INFOPLIST_KEY_CFBundleDisplayName: Lucid
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
