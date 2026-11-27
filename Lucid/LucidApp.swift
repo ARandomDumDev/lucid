@@ -10,6 +10,154 @@ struct LucidApp: App {
     }
 }
 
+private struct LucidBootPreview: View {
+        @Environment(\.dismiss) private var dismiss
+        @State private var visibleLogCount = 0
+
+        let managerName: String
+        let appNames: [String]
+
+        private var logLines: [String] {
+            [
+                "LucidPreview: sequence started",
+                "Session: validating local preview state",
+                "Session: restoring \(managerName) selection",
+                "AppShelf: restoring \(appNames.count) selected tiles",
+                "Assets: resolving package manager mark",
+                "Assets: resolving selected app tiles",
+                "Appearance: applying Midnight palette",
+                "Layout: adapting to current screen bounds",
+                "Layout: preserving system safe areas",
+                "UI: preparing boot activity surface",
+                "Animation: starting moonlight transition",
+                "Renderer: composing initial frame",
+                "LucidPreview: ready"
+            ]
+        }
+
+        var body: some View {
+            ZStack {
+                LucidPalette.midnight.ignoresSafeArea()
+
+                Circle()
+                    .fill(LucidPalette.blue.opacity(0.13))
+                    .frame(width: 320, height: 320)
+                    .blur(radius: 100)
+                    .offset(x: 150, y: -280)
+                    .accessibilityHidden(true)
+
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 26) {
+                        HStack {
+                            Text("lucid")
+                                .font(.system(size: 21, weight: .semibold, design: .rounded))
+                                .tracking(-0.7)
+                                .foregroundStyle(LucidPalette.mist)
+
+                            Spacer()
+
+                            Text("PREVIEW")
+                                .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                                .tracking(1)
+                                .foregroundStyle(LucidPalette.blue)
+                                .padding(.horizontal, 11)
+                                .padding(.vertical, 8)
+                                .glassEffect(.regular, in: Capsule())
+                        }
+
+                        VStack(alignment: .leading, spacing: 10) {
+                            Image(systemName: "moon.stars.fill")
+                                .font(.system(size: 34, weight: .regular))
+                                .foregroundStyle(LucidPalette.blue)
+                                .padding(.bottom, 8)
+
+                            Text("Waking into a new state.")
+                                .font(.system(size: 29, weight: .medium, design: .rounded))
+                                .tracking(-0.8)
+                                .foregroundStyle(LucidPalette.mist)
+                                .fixedSize(horizontal: false, vertical: true)
+
+                            Text("Lucid boot sequence")
+                                .font(.system(size: 14))
+                                .foregroundStyle(LucidPalette.muted)
+                        }
+                        .padding(.top, 20)
+                        .padding(.bottom, 4)
+
+                        VStack(alignment: .leading, spacing: 15) {
+                            HStack {
+                                Label("Boot activity", systemImage: "waveform.path")
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundStyle(LucidPalette.mist)
+                                Spacer()
+                                if visibleLogCount < logLines.count {
+                                    ProgressView()
+                                        .tint(LucidPalette.blue)
+                                        .scaleEffect(0.8)
+                                } else {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundStyle(LucidPalette.blue)
+                                }
+                            }
+
+                            VStack(alignment: .leading, spacing: 12) {
+                                ForEach(Array(logLines.prefix(visibleLogCount).enumerated()), id: \.offset) { index, line in
+                                    HStack(alignment: .top, spacing: 11) {
+                                        Text(String(format: "%04d ms", index * 320))
+                                            .foregroundStyle(LucidPalette.blue.opacity(0.85))
+                                            .frame(width: 62, alignment: .leading)
+                                        Text(line)
+                                            .foregroundStyle(LucidPalette.mist.opacity(0.9))
+                                            .fixedSize(horizontal: false, vertical: true)
+                                    }
+                                    .font(.system(size: 11, design: .monospaced))
+                                    .transition(.opacity.combined(with: .move(edge: .bottom)))
+                                }
+                            }
+                            .animation(.easeOut(duration: 0.25), value: visibleLogCount)
+                        }
+                        .padding(18)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(LucidPalette.surface, in: RoundedRectangle(cornerRadius: 24))
+                        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 24))
+                        .overlay(RoundedRectangle(cornerRadius: 24).stroke(LucidPalette.border, lineWidth: 1))
+
+                        if visibleLogCount == logLines.count {
+                            Button {
+                                dismiss()
+                            } label: {
+                                Text("Return to Lucid")
+                                    .font(.system(size: 15, weight: .semibold))
+                                    .foregroundStyle(LucidPalette.midnight)
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: 52)
+                                    .background(LucidPalette.mist, in: RoundedRectangle(cornerRadius: 16))
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .frame(maxWidth: 720)
+                    .padding(.horizontal, 24)
+                    .padding(.top, 24)
+                    .padding(.bottom, 36)
+                    .frame(maxWidth: .infinity)
+                }
+            }
+            .preferredColorScheme(.dark)
+            .statusBarHidden(false)
+            .task { @MainActor in
+                for index in logLines.indices {
+                    do {
+                        try await Task.sleep(nanoseconds: 420_000_000)
+                    } catch {
+                        return
+                    }
+                    visibleLogCount = index + 1
+                }
+            }
+        }
+}
+
 private enum LucidPalette {
     static let midnight = Color(red: 16.0 / 255.0, green: 20.0 / 255.0, blue: 38.0 / 255.0)
     static let blue = Color(red: 120.0 / 255.0, green: 155.0 / 255.0, blue: 1.0)
@@ -88,6 +236,7 @@ struct ContentView: View {
     @State private var measuredMbps: Double?
     @State private var connectionError: String?
     @State private var isMeasuring = false
+    @State private var showBootPreview = false
 
     private let apps = [
         PreviewApp(name: "Filza", symbol: "folder.fill", tint: Color(red: 0.96, green: 0.68, blue: 0.27), sizeMiB: 5.2),
@@ -131,8 +280,15 @@ struct ContentView: View {
                     .frame(maxWidth: .infinity)
                 }
             }
+
         }
         .preferredColorScheme(.dark)
+        .fullScreenCover(isPresented: $showBootPreview) {
+            LucidBootPreview(
+                managerName: selectedManager?.name ?? "Sileo",
+                appNames: selectedApps.map(\.name)
+            )
+        }
     }
 
     private var header: some View {
@@ -468,9 +624,16 @@ struct ContentView: View {
                 }
             }
 
-            primaryButton(title: "Dream again", disabled: false) {
+            primaryButton(title: "View Lucid boot preview", disabled: false) {
+                showBootPreview = true
+            }
+
+            Button("Dream again") {
                 resetFlow()
             }
+            .font(.system(size: 13, weight: .semibold))
+            .foregroundStyle(LucidPalette.blue)
+            .frame(maxWidth: .infinity, alignment: .center)
         }
         .padding(18)
         .background(LucidPalette.surface, in: RoundedRectangle(cornerRadius: 24))
@@ -491,20 +654,22 @@ struct ContentView: View {
                     .foregroundStyle(LucidPalette.blue)
             }
 
-            VStack(alignment: .leading, spacing: 9) {
-                ForEach(Array(activity.suffix(8))) { event in
-                    HStack(alignment: .top, spacing: 9) {
-                        Text(event.time)
-                            .foregroundStyle(LucidPalette.blue.opacity(0.85))
-                        Text(event.message)
-                            .foregroundStyle(LucidPalette.mist.opacity(0.9))
-                            .fixedSize(horizontal: false, vertical: true)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 9) {
+                    ForEach(activity) { event in
+                        HStack(alignment: .top, spacing: 9) {
+                            Text(event.time)
+                                .foregroundStyle(LucidPalette.blue.opacity(0.85))
+                            Text(event.message)
+                                .foregroundStyle(LucidPalette.mist.opacity(0.9))
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .font(.system(size: 10, design: .monospaced))
                     }
-                    .font(.system(size: 10, design: .monospaced))
-                    .transition(.opacity.combined(with: .move(edge: .bottom)))
                 }
+                .animation(.easeOut(duration: 0.22), value: activity.count)
             }
-            .animation(.easeOut(duration: 0.22), value: activity.count)
+            .frame(maxHeight: 280)
         }
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -549,6 +714,8 @@ struct ContentView: View {
         connectionError = nil
         activity.removeAll()
         record("Lucid session started")
+        record("Loading device presentation profile")
+        record("Preparing package manager selection")
         record("Select a package manager to continue")
         withAnimation(.easeInOut(duration: 0.3)) {
             stage = .packageManager
@@ -558,7 +725,9 @@ struct ContentView: View {
     private func continueToApps() {
         guard let selectedManager else { return }
         record("Package manager selected: \(selectedManager.name)")
-        record("Preparing app catalog")
+        record("Loading \(selectedManager.name) selection profile")
+        record("Reading available app catalog")
+        record("App catalog ready")
         withAnimation(.easeInOut(duration: 0.3)) {
             stage = .appSelection
         }
