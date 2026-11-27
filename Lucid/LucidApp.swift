@@ -41,19 +41,27 @@ private enum DeviceProfile {
     static let styleRange = "iOS 7 – iOS 27"
 }
 
+private enum BootSequencePhase: Equatable {
+    case activity
+    case blackout
+    case moon
+    case wordmark
+}
+
 private struct LucidBootSequence: View {
         @Environment(\.dismiss) private var dismiss
         @State private var visibleLogCount = 0
+        @State private var phase = BootSequencePhase.activity
 
         let managerName: String
         let appNames: [String]
 
         private var logLines: [String] {
             [
-                "LucidConcept: sequence started",
+                "LucidBoot: sequence started",
                 "Device: \(DeviceProfile.deviceSummary)",
                 "Style: inspired by \(DeviceProfile.styleRange)",
-                "Session: validating local concept state",
+                "Session: validating local state",
                 "Session: restoring \(managerName) selection",
                 "AppShelf: restoring \(appNames.count) selected tiles",
                 "Assets: resolving package manager mark",
@@ -64,129 +72,161 @@ private struct LucidBootSequence: View {
                 "UI: preparing boot activity surface",
                 "Animation: starting moonlight transition",
                 "Renderer: composing initial frame",
-                "LucidConcept: ready"
+                "LucidBoot: ready"
             ]
         }
 
         var body: some View {
             ZStack {
-                LucidPalette.midnight.ignoresSafeArea()
+                if phase == .activity {
+                    ZStack {
+                        LucidPalette.midnight.ignoresSafeArea()
 
-                Circle()
-                    .fill(LucidPalette.blue.opacity(0.13))
-                    .frame(width: 320, height: 320)
-                    .blur(radius: 100)
-                    .offset(x: 150, y: -280)
-                    .accessibilityHidden(true)
+                        Circle()
+                            .fill(LucidPalette.blue.opacity(0.13))
+                            .frame(width: 320, height: 320)
+                            .blur(radius: 100)
+                            .offset(x: 150, y: -280)
+                            .accessibilityHidden(true)
 
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 26) {
-                        HStack {
-                            Text("lucid")
-                                .font(.system(size: 21, weight: .semibold, design: .rounded))
-                                .tracking(-0.7)
-                                .foregroundStyle(LucidPalette.mist)
+                        ScrollView {
+                            VStack(alignment: .leading, spacing: 26) {
+                            HStack {
+                                Text("lucid")
+                                    .font(.system(size: 21, weight: .semibold, design: .rounded))
+                                    .tracking(-0.7)
+                                    .foregroundStyle(LucidPalette.mist)
+                            }
 
-                            Spacer()
+                            VStack(alignment: .leading, spacing: 10) {
+                                Image(systemName: "moon.stars.fill")
+                                    .font(.system(size: 34, weight: .regular))
+                                    .foregroundStyle(LucidPalette.blue)
+                                    .padding(.bottom, 8)
 
-                            Text("CONCEPT")
-                                .font(.system(size: 9, weight: .semibold, design: .monospaced))
-                                .tracking(1)
-                                .foregroundStyle(LucidPalette.blue)
-                                .padding(.horizontal, 11)
-                                .padding(.vertical, 8)
-                                .glassEffect(.regular, in: Capsule())
+                                Text(DeviceProfile.bootHeadline)
+                                    .font(.system(size: 29, weight: .medium, design: .rounded))
+                                    .tracking(-0.8)
+                                    .foregroundStyle(LucidPalette.mist)
+                                    .fixedSize(horizontal: false, vertical: true)
+
+                                Text(DeviceProfile.deviceSummary)
+                                    .font(.system(size: 14))
+                                    .foregroundStyle(LucidPalette.muted)
+                            }
+                            .padding(.top, 20)
+                            .padding(.bottom, 4)
+
+                            VStack(alignment: .leading, spacing: 15) {
+                                HStack {
+                                    Label("Boot activity", systemImage: "waveform.path")
+                                        .font(.system(size: 14, weight: .semibold))
+                                        .foregroundStyle(LucidPalette.mist)
+                                    Spacer()
+                                    if visibleLogCount < logLines.count {
+                                        ProgressView()
+                                            .tint(LucidPalette.blue)
+                                            .scaleEffect(0.8)
+                                    } else {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundStyle(LucidPalette.blue)
+                                    }
+                                }
+
+                                VStack(alignment: .leading, spacing: 12) {
+                                    ForEach(Array(logLines.prefix(visibleLogCount).enumerated()), id: \.offset) { index, line in
+                                        HStack(alignment: .top, spacing: 11) {
+                                            Text(String(format: "%04d ms", index * 320))
+                                                .foregroundStyle(LucidPalette.blue.opacity(0.85))
+                                                .frame(width: 62, alignment: .leading)
+                                            Text(line)
+                                                .foregroundStyle(LucidPalette.mist.opacity(0.9))
+                                                .fixedSize(horizontal: false, vertical: true)
+                                        }
+                                        .font(.system(size: 11, design: .monospaced))
+                                        .transition(.opacity.combined(with: .move(edge: .bottom)))
+                                    }
+                                }
+                                .animation(.easeOut(duration: 0.25), value: visibleLogCount)
+                            }
+                            .padding(18)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(LucidPalette.surface, in: RoundedRectangle(cornerRadius: 24))
+                            .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 24))
+                            .overlay(RoundedRectangle(cornerRadius: 24).stroke(LucidPalette.border, lineWidth: 1))
+                            }
+                            .frame(maxWidth: 720)
+                            .padding(.horizontal, 24)
+                            .padding(.top, 24)
+                            .padding(.bottom, 36)
+                            .frame(maxWidth: .infinity)
                         }
-
-                        VStack(alignment: .leading, spacing: 10) {
+                    }
+                } else if phase == .moon {
+                    ZStack {
+                        LucidPalette.midnight.ignoresSafeArea()
+                        Image(systemName: "moon.stars.fill")
+                            .font(.system(size: 68, weight: .regular))
+                            .foregroundStyle(LucidPalette.mist)
+                            .transition(.opacity)
+                    }
+                } else if phase == .wordmark {
+                    ZStack {
+                        Color.black.ignoresSafeArea()
+                        VStack(spacing: 22) {
                             Image(systemName: "moon.stars.fill")
-                                .font(.system(size: 34, weight: .regular))
-                                .foregroundStyle(LucidPalette.blue)
-                                .padding(.bottom, 8)
-
-                            Text(DeviceProfile.bootHeadline)
-                                .font(.system(size: 29, weight: .medium, design: .rounded))
+                                .font(.system(size: 50, weight: .regular))
+                                .foregroundStyle(LucidPalette.mist)
+                            Text("lucid")
+                                .font(.system(size: 28, weight: .medium, design: .rounded))
                                 .tracking(-0.8)
                                 .foregroundStyle(LucidPalette.mist)
-                                .fixedSize(horizontal: false, vertical: true)
-
-                            Text(DeviceProfile.deviceSummary)
-                                .font(.system(size: 14))
-                                .foregroundStyle(LucidPalette.muted)
-                        }
-                        .padding(.top, 20)
-                        .padding(.bottom, 4)
-
-                        VStack(alignment: .leading, spacing: 15) {
-                            HStack {
-                                Label("Boot activity", systemImage: "waveform.path")
-                                    .font(.system(size: 14, weight: .semibold))
-                                    .foregroundStyle(LucidPalette.mist)
-                                Spacer()
-                                if visibleLogCount < logLines.count {
-                                    ProgressView()
-                                        .tint(LucidPalette.blue)
-                                        .scaleEffect(0.8)
-                                } else {
-                                    Image(systemName: "checkmark.circle.fill")
-                                        .foregroundStyle(LucidPalette.blue)
-                                }
-                            }
-
-                            VStack(alignment: .leading, spacing: 12) {
-                                ForEach(Array(logLines.prefix(visibleLogCount).enumerated()), id: \.offset) { index, line in
-                                    HStack(alignment: .top, spacing: 11) {
-                                        Text(String(format: "%04d ms", index * 320))
-                                            .foregroundStyle(LucidPalette.blue.opacity(0.85))
-                                            .frame(width: 62, alignment: .leading)
-                                        Text(line)
-                                            .foregroundStyle(LucidPalette.mist.opacity(0.9))
-                                            .fixedSize(horizontal: false, vertical: true)
-                                    }
-                                    .font(.system(size: 11, design: .monospaced))
-                                    .transition(.opacity.combined(with: .move(edge: .bottom)))
-                                }
-                            }
-                            .animation(.easeOut(duration: 0.25), value: visibleLogCount)
-                        }
-                        .padding(18)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(LucidPalette.surface, in: RoundedRectangle(cornerRadius: 24))
-                        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 24))
-                        .overlay(RoundedRectangle(cornerRadius: 24).stroke(LucidPalette.border, lineWidth: 1))
-
-                        if visibleLogCount == logLines.count {
                             Button {
                                 dismiss()
                             } label: {
                                 Text("Return to Lucid")
                                     .font(.system(size: 15, weight: .semibold))
                                     .foregroundStyle(LucidPalette.midnight)
-                                    .frame(maxWidth: .infinity)
-                                    .frame(height: 52)
+                                    .frame(width: 220, height: 50)
                                     .background(LucidPalette.mist, in: RoundedRectangle(cornerRadius: 16))
                             }
                             .buttonStyle(.plain)
                         }
                     }
-                    .frame(maxWidth: 720)
-                    .padding(.horizontal, 24)
-                    .padding(.top, 24)
-                    .padding(.bottom, 36)
-                    .frame(maxWidth: .infinity)
+                } else {
+                    Color.black.ignoresSafeArea()
                 }
             }
             .preferredColorScheme(.dark)
-            .statusBarHidden(false)
+            .statusBarHidden(phase != .activity)
+            .animation(.easeInOut(duration: 0.35), value: phase)
             .task { @MainActor in
-                for index in logLines.indices {
-                    do {
-                        try await Task.sleep(nanoseconds: 420_000_000)
-                    } catch {
-                        return
-                    }
-                    visibleLogCount = index + 1
+                await runSequence()
+            }
+        }
+
+        @MainActor
+        private func runSequence() async {
+            for index in logLines.indices {
+                do {
+                    try await Task.sleep(nanoseconds: 420_000_000)
+                } catch {
+                    return
                 }
+                visibleLogCount = index + 1
+            }
+
+            do {
+                try await Task.sleep(nanoseconds: 500_000_000)
+                phase = .blackout
+                try await Task.sleep(nanoseconds: 1_000_000_000)
+                phase = .moon
+                try await Task.sleep(nanoseconds: 1_000_000_000)
+                phase = .blackout
+                try await Task.sleep(nanoseconds: 1_000_000_000)
+                phase = .wordmark
+            } catch {
+                return
             }
         }
 }
@@ -270,6 +310,8 @@ struct ContentView: View {
     @State private var connectionError: String?
     @State private var isMeasuring = false
     @State private var showBootSequence = false
+    @State private var showFirstRunDisclosure = false
+    @AppStorage("hasAcknowledgedLucidBootSimulation") private var hasAcknowledgedBootSimulation = false
 
     private let apps = [
         PreviewApp(name: "Filza", symbol: "folder.fill", tint: Color(red: 0.96, green: 0.68, blue: 0.27), sizeMiB: 5.2),
@@ -323,6 +365,22 @@ struct ContentView: View {
                 appNames: selectedApps.map(\.name)
             )
         }
+        .onAppear {
+            if !hasAcknowledgedBootSimulation {
+                showFirstRunDisclosure = true
+            }
+        }
+        .alert("Lucid boot sequence", isPresented: $showFirstRunDisclosure) {
+            Button("Start sequence") {
+                hasAcknowledgedBootSimulation = true
+                showBootSequence = true
+            }
+            Button("Not now", role: .cancel) {
+                hasAcknowledgedBootSimulation = true
+            }
+        } message: {
+            Text("This is a Lucid simulation shown entirely inside the app. It will not reboot iOS, modify device security, crash, or close Lucid.")
+        }
     }
 
     private var header: some View {
@@ -345,19 +403,6 @@ struct ContentView: View {
                 .foregroundStyle(LucidPalette.mist)
 
             Spacer()
-
-            HStack(spacing: 6) {
-                Circle()
-                    .fill(LucidPalette.blue)
-                    .frame(width: 6, height: 6)
-                Text("CONCEPT")
-                    .font(.system(size: 9, weight: .semibold, design: .monospaced))
-                    .tracking(1)
-            }
-            .foregroundStyle(LucidPalette.mist.opacity(0.8))
-            .padding(.horizontal, 11)
-            .padding(.vertical, 8)
-            .glassEffect(.regular, in: Capsule())
         }
     }
 
@@ -715,10 +760,6 @@ struct ContentView: View {
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(LucidPalette.mist)
                 Spacer()
-                Text("CONCEPT")
-                    .font(.system(size: 9, weight: .semibold, design: .monospaced))
-                    .tracking(0.8)
-                    .foregroundStyle(LucidPalette.blue)
             }
 
             ScrollView {
