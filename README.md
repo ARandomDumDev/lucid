@@ -4,12 +4,15 @@ Your phone is dreaming.
 
 Lucid is a native iPhone and iPad interface concept inspired by a
 different state of iOS. Choose Cydia, Zebra, or recommended Sileo and
-follow the staged setup preview with a sample app shelf. The logs and
+follow the staged setup simulation with a sample app shelf. The logs and
 app transfers are simulated; no jailbreak code runs and no packages
 are downloaded or installed, and the boot screen does not reboot iOS.
+The displayed iOS 7–iOS 27 range describes visual inspiration, not OS
+compatibility; the app requires iOS 26 or later.
 A 512 KB request to Cloudflare's speed test measures the active
 connection and scales the simulated transfer timing; if it fails, a
-typical preview rate is available. App-selection tiles use SF Symbols
+typical simulated rate is available. Device details show the device
+family and iOS version. App-selection tiles use SF Symbols
 because redistribution permission for those apps' artwork was not
 clear. Package-manager icon attributions and licenses are in
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
