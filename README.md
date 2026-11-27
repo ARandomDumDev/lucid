@@ -7,6 +7,8 @@ different state of iOS. Choose Cydia, Zebra, or recommended Sileo and
 follow the staged setup simulation with a sample app shelf. The logs and
 app transfers are simulated; no jailbreak code runs and no packages
 are downloaded or installed, and the boot screen does not reboot iOS.
+On first launch, a notice explains the in-app boot animation; it ends
+with Lucid branding and does not close the app.
 The displayed iOS 7–iOS 27 range describes visual inspiration, not OS
 compatibility; the app requires iOS 26 or later.
 A 512 KB request to Cloudflare's speed test measures the active
