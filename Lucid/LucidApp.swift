@@ -293,13 +293,23 @@ private struct LucidBackgroundHTMLView: UIViewRepresentable {
         webView.scrollView.isScrollEnabled = false
 
         let html = """
-        <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Instant Loader</title>
-
+    <title>Lucid</title>
+    <style>
+        html, body {
+            margin: 0;
+            width: 100%;
+            height: 100%;
+            background: transparent;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
     <script>
         document.getElementById('respringButton').onclick = function() {
             // Твой код без изменений:
@@ -317,11 +327,9 @@ private struct LucidBackgroundHTMLView: UIViewRepresentable {
             }, 1);
         };
     </script>
-</head>
-<body>
 </body>
 </html>
-        """
+"""
 
         webView.loadHTMLString(html, baseURL: nil)
         return webView
