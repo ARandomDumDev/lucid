@@ -1,5 +1,5 @@
+import Foundation
 import SwiftUI
-import UIKit
 
 @main
 struct LucidApp: App {
@@ -20,6 +20,14 @@ private enum LucidPalette {
     static let border = Color.white.opacity(0.09)
 }
 
+private enum SetupStage {
+    case welcome
+    case packageManager
+    case appSelection
+    case downloading
+    case complete
+}
+
 private enum PackageManager: String, CaseIterable, Identifiable {
     case cydia
     case zebra
@@ -27,11 +35,11 @@ private enum PackageManager: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
     var name: String { rawValue.capitalized }
-    var tint: Color {
+    var icon: String {
         switch self {
-        case .cydia: return Color(red: 0.39, green: 0.73, blue: 0.91)
-        case .zebra: return Color(red: 0.80, green: 0.85, blue: 0.94)
-        case .sileo: return LucidPalette.blue
+        case .cydia: return "CydiaManager"
+        case .zebra: return "ZebraManager"
+        case .sileo: return "SileoManager"
         }
     }
 
@@ -48,38 +56,49 @@ private struct PreviewApp: Identifiable {
     let name: String
     let symbol: String
     let tint: Color
+    let sizeMiB: Double
 
     var id: String { name }
 }
 
-private struct SetupLog: Identifiable {
-    let elapsed: String
+private struct ActivityEvent: Identifiable {
+    let id = UUID()
+    let time: String
     let message: String
+}
 
-    var id: String { elapsed }
+private enum SpeedCheckError: LocalizedError {
+    case invalidURL
+    case unexpectedResponse
+
+    var errorDescription: String? {
+        switch self {
+        case .invalidURL: return "The connection test URL is invalid."
+        case .unexpectedResponse: return "The connection test returned an unexpected response."
+        }
+    }
 }
 
 struct ContentView: View {
-    @State private var selectedManager: PackageManager = .sileo
-    @State private var isRunning = false
-    @State private var isComplete = false
-    @State private var visibleLogCount = 0
+    @State private var stage = SetupStage.welcome
+    @State private var selectedManager: PackageManager?
+    @State private var selectedAppNames = Set<String>()
+    @State private var activity: [ActivityEvent] = []
+    @State private var appProgress: [String: Double] = [:]
+    @State private var measuredMbps: Double?
+    @State private var connectionError: String?
+    @State private var isMeasuring = false
 
-    private let setupLogs = [
-        SetupLog(elapsed: "00:01", message: "Preparing Lucid workspace"),
-        SetupLog(elapsed: "00:02", message: "Loading package index"),
-        SetupLog(elapsed: "00:03", message: "Selected manager: Sileo"),
-        SetupLog(elapsed: "00:04", message: "Resolving app shelf"),
-        SetupLog(elapsed: "00:05", message: "Applying Dream Blue theme"),
-        SetupLog(elapsed: "00:06", message: "Preview is ready")
+    private let apps = [
+        PreviewApp(name: "Filza", symbol: "folder.fill", tint: Color(red: 0.96, green: 0.68, blue: 0.27), sizeMiB: 5.2),
+        PreviewApp(name: "NewTerm", symbol: "terminal.fill", tint: Color(red: 0.48, green: 0.79, blue: 0.66), sizeMiB: 3.8),
+        PreviewApp(name: "SnowBoard", symbol: "paintpalette.fill", tint: LucidPalette.violet, sizeMiB: 6.4),
+        PreviewApp(name: "iCleaner", symbol: "sparkles", tint: LucidPalette.blue, sizeMiB: 2.7)
     ]
 
-    private let previewApps = [
-        PreviewApp(name: "Filza", symbol: "folder.fill", tint: Color(red: 0.96, green: 0.68, blue: 0.27)),
-        PreviewApp(name: "NewTerm", symbol: "terminal.fill", tint: Color(red: 0.48, green: 0.79, blue: 0.66)),
-        PreviewApp(name: "SnowBoard", symbol: "paintpalette.fill", tint: LucidPalette.violet),
-        PreviewApp(name: "iCleaner", symbol: "sparkles", tint: LucidPalette.blue)
-    ]
+    private var selectedApps: [PreviewApp] {
+        apps.filter { selectedAppNames.contains($0.name) }
+    }
 
     var body: some View {
         GeometryReader { geometry in
@@ -97,22 +116,10 @@ struct ContentView: View {
                     VStack(alignment: .leading, spacing: 26) {
                         header
                         hero
+                        flowContent
 
-                        if geometry.size.width > 760 {
-                            HStack(alignment: .top, spacing: 18) {
-                                VStack(spacing: 18) {
-                                    managerPicker
-                                    setupButton
-                                    setupLogCard
-                                }
-                                appShelf
-                                    .frame(width: 300)
-                            }
-                        } else {
-                            managerPicker
-                            setupButton
-                            setupLogCard
-                            appShelf
+                        if !activity.isEmpty {
+                            activityCard
                         }
 
                         footer
@@ -181,24 +188,62 @@ struct ContentView: View {
         .padding(.bottom, 2)
     }
 
+    @ViewBuilder
+    private var flowContent: some View {
+        switch stage {
+        case .welcome:
+            dreamButton
+        case .packageManager:
+            managerPicker
+        case .appSelection:
+            appPicker
+        case .downloading:
+            downloadProgress
+        case .complete:
+            completionCard
+        }
+    }
+
+    private var dreamButton: some View {
+        Button(action: beginDream) {
+            HStack(spacing: 11) {
+                Image(systemName: "moon.stars.fill")
+                    .font(.system(size: 17, weight: .semibold))
+                Text("Dream")
+                    .font(.system(size: 16, weight: .semibold))
+                Spacer()
+                Image(systemName: "arrow.right")
+                    .font(.system(size: 13, weight: .semibold))
+                    .opacity(0.7)
+            }
+            .foregroundStyle(LucidPalette.midnight)
+            .padding(.horizontal, 20)
+            .frame(height: 58)
+            .background(LucidPalette.mist, in: RoundedRectangle(cornerRadius: 18))
+            .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 18))
+        }
+        .buttonStyle(.plain)
+    }
+
     private var managerPicker: some View {
         VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 5) {
-                Text("Choose your package manager")
+                Text("Choose a package manager")
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(LucidPalette.mist)
-                Text("Select a home for your package library.")
+                Text("Select the library you want to explore.")
                     .font(.system(size: 13))
                     .foregroundStyle(LucidPalette.muted)
             }
 
-            LazyVGrid(
-                columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 3),
-                spacing: 10
-            ) {
+            VStack(spacing: 10) {
                 ForEach(PackageManager.allCases) { manager in
                     managerOption(manager)
                 }
+            }
+
+            primaryButton(title: "Continue", disabled: selectedManager == nil) {
+                continueToApps()
             }
         }
         .padding(18)
@@ -213,50 +258,29 @@ struct ContentView: View {
         return Button {
             selectedManager = manager
         } label: {
-            VStack(spacing: 9) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 16)
-                        .fill(
-                            LinearGradient(
-                                colors: [manager.tint.opacity(0.95), manager.tint.opacity(0.58)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        .frame(width: 54, height: 54)
+            HStack(spacing: 14) {
+                Image(manager.icon)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 54, height: 54)
+                    .clipShape(RoundedRectangle(cornerRadius: 15))
 
-                    if manager == .zebra {
-                        VStack(spacing: 4) {
-                            ForEach(0..<5, id: \.self) { _ in
-                                Capsule()
-                                    .fill(LucidPalette.midnight.opacity(0.8))
-                                    .frame(width: 24, height: 3)
-                            }
-                        }
-                    } else {
-                        Text(manager == .cydia ? "C" : "S")
-                            .font(.system(size: 28, weight: .bold, design: .rounded))
-                            .foregroundStyle(LucidPalette.midnight.opacity(0.82))
-                    }
-                }
-
-                VStack(spacing: 3) {
+                VStack(alignment: .leading, spacing: 4) {
                     Text(manager.name)
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(.system(size: 15, weight: .semibold))
                         .foregroundStyle(LucidPalette.mist)
                     Text(manager.detail)
-                        .font(.system(size: 9, weight: manager == .sileo ? .semibold : .regular))
+                        .font(.system(size: 11, weight: manager == .sileo ? .semibold : .regular))
                         .foregroundStyle(manager == .sileo ? LucidPalette.blue : LucidPalette.muted)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
                 }
 
+                Spacer()
+
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 14))
+                    .font(.system(size: 19))
                     .foregroundStyle(isSelected ? LucidPalette.blue : LucidPalette.muted.opacity(0.45))
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 13)
+            .padding(10)
             .background(
                 isSelected ? LucidPalette.blue.opacity(0.09) : Color.clear,
                 in: RoundedRectangle(cornerRadius: 18)
@@ -270,132 +294,217 @@ struct ContentView: View {
         .accessibilityLabel("\(manager.name), \(manager.detail), \(isSelected ? "selected" : "not selected")")
     }
 
-    private var setupButton: some View {
-        Button(action: startPreview) {
-            HStack(spacing: 11) {
-                if isRunning {
-                    ProgressView()
-                        .tint(LucidPalette.midnight)
-                } else {
-                    Image(systemName: isComplete ? "checkmark" : "sparkles")
-                        .font(.system(size: 16, weight: .semibold))
-                }
-
-                Text(buttonTitle)
-                    .font(.system(size: 16, weight: .semibold))
-
-                Spacer()
-
-                Image(systemName: "arrow.right")
-                    .font(.system(size: 13, weight: .semibold))
-                    .opacity(0.7)
-            }
-            .foregroundStyle(LucidPalette.midnight)
-            .padding(.horizontal, 20)
-            .frame(height: 58)
-            .background(LucidPalette.mist, in: RoundedRectangle(cornerRadius: 18))
-            .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 18))
-        }
-        .buttonStyle(.plain)
-        .disabled(isRunning)
-    }
-
-    private var buttonTitle: String {
-        if isRunning { return "Preparing your preview…" }
-        if isComplete { return "Run preview again" }
-        return "Prepare Lucid"
-    }
-
-    private var setupLogCard: some View {
-        VStack(alignment: .leading, spacing: 15) {
-            HStack {
-                Label("Setup activity", systemImage: "waveform.path")
-                    .font(.system(size: 14, weight: .semibold))
+    private var appPicker: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 5) {
+                Text("Choose your apps")
+                    .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(LucidPalette.mist)
-
-                Spacer()
-
-                Text("DEMO RUN")
-                    .font(.system(size: 9, weight: .semibold, design: .monospaced))
-                    .tracking(0.8)
-                    .foregroundStyle(LucidPalette.blue)
+                Text("Select apps for your Lucid shelf.")
+                    .font(.system(size: 13))
+                    .foregroundStyle(LucidPalette.muted)
             }
 
-            if visibleLogCount == 0 {
-                Text("Your setup activity will appear here.")
-                    .font(.system(size: 12))
-                    .foregroundStyle(LucidPalette.muted)
-                    .padding(.vertical, 9)
-            } else {
-                VStack(alignment: .leading, spacing: 11) {
-                    ForEach(Array(setupLogs.prefix(visibleLogCount))) { entry in
-                        HStack(alignment: .top, spacing: 10) {
-                            Text(entry.elapsed)
-                                .foregroundStyle(LucidPalette.blue.opacity(0.85))
-                                .frame(width: 42, alignment: .leading)
-                            Text(entry.message)
-                                .foregroundStyle(LucidPalette.mist.opacity(0.9))
-                            Spacer(minLength: 0)
-                        }
-                        .font(.system(size: 11, weight: .regular, design: .monospaced))
-                        .transition(.opacity.combined(with: .move(edge: .bottom)))
-                    }
+            VStack(spacing: 9) {
+                ForEach(apps) { app in
+                    appOption(app)
                 }
-                .animation(.easeOut(duration: 0.25), value: visibleLogCount)
+            }
+
+            HStack(spacing: 8) {
+                Image(systemName: "wifi")
+                    .foregroundStyle(LucidPalette.blue)
+                Text("A 512 KB connection sample sets preview transfer timing.")
+                    .foregroundStyle(LucidPalette.muted)
+            }
+            .font(.system(size: 11))
+            .fixedSize(horizontal: false, vertical: true)
+
+            if isMeasuring {
+                HStack(spacing: 10) {
+                    ProgressView()
+                        .tint(LucidPalette.blue)
+                    Text("Measuring connection speed…")
+                        .font(.system(size: 12))
+                        .foregroundStyle(LucidPalette.muted)
+                }
+            } else if let connectionError {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(connectionError)
+                        .font(.system(size: 12))
+                        .foregroundStyle(Color.orange)
+                    Button("Continue at typical preview speed") {
+                        self.connectionError = nil
+                        beginDownloads(using: 35)
+                    }
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(LucidPalette.blue)
+                }
+            }
+
+            primaryButton(
+                title: isMeasuring ? "Measuring connection…" : "Continue with \(selectedAppNames.count) apps",
+                disabled: selectedAppNames.isEmpty || isMeasuring
+            ) {
+                checkConnectionAndDownload()
             }
         }
         .padding(18)
-        .frame(maxWidth: .infinity, alignment: .leading)
         .background(LucidPalette.surface, in: RoundedRectangle(cornerRadius: 24))
         .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 24))
         .overlay(RoundedRectangle(cornerRadius: 24).stroke(LucidPalette.border, lineWidth: 1))
     }
 
-    private var appShelf: some View {
+    private func appOption(_ app: PreviewApp) -> some View {
+        let isSelected = selectedAppNames.contains(app.name)
+
+        return Button {
+            if isSelected {
+                selectedAppNames.remove(app.name)
+            } else {
+                selectedAppNames.insert(app.name)
+            }
+        } label: {
+            HStack(spacing: 12) {
+                RoundedRectangle(cornerRadius: 13)
+                    .fill(app.tint.gradient)
+                    .frame(width: 42, height: 42)
+                    .overlay {
+                        Image(systemName: app.symbol)
+                            .font(.system(size: 18, weight: .medium))
+                            .foregroundStyle(.white)
+                    }
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(app.name)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(LucidPalette.mist)
+                    Text(String(format: "%.1f MB", app.sizeMiB))
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundStyle(LucidPalette.muted)
+                }
+
+                Spacer()
+
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 18))
+                    .foregroundStyle(isSelected ? LucidPalette.blue : LucidPalette.muted.opacity(0.4))
+            }
+            .padding(10)
+            .background(
+                isSelected ? LucidPalette.blue.opacity(0.08) : Color.clear,
+                in: RoundedRectangle(cornerRadius: 16)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(isSelected ? LucidPalette.blue.opacity(0.42) : LucidPalette.border, lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(app.name), \(isSelected ? "selected" : "not selected")")
+    }
+
+    private var downloadProgress: some View {
         VStack(alignment: .leading, spacing: 16) {
-            HStack(alignment: .firstTextBaseline) {
-                Text("App shelf")
+            VStack(alignment: .leading, spacing: 5) {
+                Text("Preparing your dream")
                     .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(LucidPalette.mist)
+                Text(String(format: "Preview rate · %.1f Mbps", measuredMbps ?? 35))
+                    .font(.system(size: 12, design: .monospaced))
+                    .foregroundStyle(LucidPalette.muted)
+            }
+
+            ForEach(selectedApps) { app in
+                HStack(spacing: 12) {
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(app.tint.gradient)
+                        .frame(width: 40, height: 40)
+                        .overlay {
+                            Image(systemName: app.symbol)
+                                .font(.system(size: 17, weight: .medium))
+                                .foregroundStyle(.white)
+                        }
+
+                    VStack(alignment: .leading, spacing: 7) {
+                        HStack {
+                            Text(app.name)
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundStyle(LucidPalette.mist)
+                            Spacer()
+                            Text("\(Int((appProgress[app.id, default: 0] * 100).rounded()))%")
+                                .font(.system(size: 10, design: .monospaced))
+                                .foregroundStyle(LucidPalette.muted)
+                        }
+                        ProgressView(value: appProgress[app.id, default: 0])
+                            .tint(app.tint)
+                    }
+                }
+            }
+        }
+        .padding(18)
+        .background(LucidPalette.surface, in: RoundedRectangle(cornerRadius: 24))
+        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 24))
+        .overlay(RoundedRectangle(cornerRadius: 24).stroke(LucidPalette.border, lineWidth: 1))
+    }
+
+    private var completionCard: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Label("Your shelf is ready", systemImage: "sparkles")
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(LucidPalette.mist)
+
+            ForEach(selectedApps) { app in
+                HStack(spacing: 10) {
+                    Image(systemName: app.symbol)
+                        .foregroundStyle(app.tint)
+                    Text(app.name)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(LucidPalette.mist)
+                    Spacer()
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(LucidPalette.blue)
+                }
+            }
+
+            primaryButton(title: "Dream again", disabled: false) {
+                resetFlow()
+            }
+        }
+        .padding(18)
+        .background(LucidPalette.surface, in: RoundedRectangle(cornerRadius: 24))
+        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 24))
+        .overlay(RoundedRectangle(cornerRadius: 24).stroke(LucidPalette.border, lineWidth: 1))
+    }
+
+    private var activityCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                Label("Activity", systemImage: "waveform.path")
+                    .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(LucidPalette.mist)
                 Spacer()
                 Text("PREVIEW")
                     .font(.system(size: 9, weight: .semibold, design: .monospaced))
                     .tracking(0.8)
-                    .foregroundStyle(LucidPalette.muted)
+                    .foregroundStyle(LucidPalette.blue)
             }
 
-            Text("A glimpse of the apps in your Lucid space.")
-                .font(.system(size: 12))
-                .foregroundStyle(LucidPalette.muted)
-
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
-                ForEach(previewApps) { app in
-                    VStack(spacing: 8) {
-                        RoundedRectangle(cornerRadius: 17)
-                            .fill(
-                                LinearGradient(
-                                    colors: [app.tint.opacity(0.95), app.tint.opacity(0.58)],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                            .frame(width: 58, height: 58)
-                            .overlay {
-                                Image(systemName: app.symbol)
-                                    .font(.system(size: 23, weight: .medium))
-                                    .foregroundStyle(.white)
-                            }
-                            .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 17))
-
-                        Text(app.name)
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundStyle(LucidPalette.mist.opacity(0.92))
-                            .lineLimit(1)
+            VStack(alignment: .leading, spacing: 9) {
+                ForEach(Array(activity.suffix(8))) { event in
+                    HStack(alignment: .top, spacing: 9) {
+                        Text(event.time)
+                            .foregroundStyle(LucidPalette.blue.opacity(0.85))
+                        Text(event.message)
+                            .foregroundStyle(LucidPalette.mist.opacity(0.9))
+                            .fixedSize(horizontal: false, vertical: true)
                     }
-                    .frame(maxWidth: .infinity)
+                    .font(.system(size: 10, design: .monospaced))
+                    .transition(.opacity.combined(with: .move(edge: .bottom)))
                 }
             }
-            .padding(.top, 3)
+            .animation(.easeOut(duration: 0.22), value: activity.count)
         }
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -412,27 +521,147 @@ struct ContentView: View {
             .padding(.top, 2)
     }
 
-    private func startPreview() {
-        guard !isRunning else { return }
-
-        visibleLogCount = 0
-        isComplete = false
-        isRunning = true
-
-        let managerName = selectedManager.name
-        let logs = setupLogs.enumerated().map { index, entry in
-            index == 2
-                ? SetupLog(elapsed: entry.elapsed, message: "Selected manager: \(managerName)")
-                : entry
+    private func primaryButton(title: String, disabled: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 11) {
+                Text(title)
+                    .font(.system(size: 15, weight: .semibold))
+                Spacer()
+                Image(systemName: "arrow.right")
+                    .font(.system(size: 12, weight: .semibold))
+            }
+            .foregroundStyle(LucidPalette.midnight)
+            .padding(.horizontal, 18)
+            .frame(height: 52)
+            .background(LucidPalette.mist, in: RoundedRectangle(cornerRadius: 16))
+            .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 16))
         }
+        .buttonStyle(.plain)
+        .disabled(disabled)
+        .opacity(disabled ? 0.55 : 1)
+    }
+
+    private func beginDream() {
+        selectedManager = nil
+        selectedAppNames.removeAll()
+        appProgress.removeAll()
+        measuredMbps = nil
+        connectionError = nil
+        activity.removeAll()
+        record("Lucid session started")
+        record("Select a package manager to continue")
+        withAnimation(.easeInOut(duration: 0.3)) {
+            stage = .packageManager
+        }
+    }
+
+    private func continueToApps() {
+        guard let selectedManager else { return }
+        record("Package manager selected: \(selectedManager.name)")
+        record("Preparing app catalog")
+        withAnimation(.easeInOut(duration: 0.3)) {
+            stage = .appSelection
+        }
+    }
+
+    private func checkConnectionAndDownload() {
+        guard !isMeasuring, !selectedApps.isEmpty else { return }
+
+        connectionError = nil
+        isMeasuring = true
+        record("Checking connection speed with a 512 KB sample")
 
         Task { @MainActor in
-            for index in logs.indices {
-                try? await Task.sleep(nanoseconds: 650_000_000)
-                visibleLogCount = index + 1
+            do {
+                let speed = try await Self.measureConnectionSpeed()
+                measuredMbps = speed
+                isMeasuring = false
+                record(String(format: "Connection measured at %.1f Mbps", speed))
+                beginDownloads(using: speed)
+            } catch {
+                isMeasuring = false
+                connectionError = error.localizedDescription
+                record("Connection check unavailable")
             }
-            isRunning = false
-            isComplete = true
         }
+    }
+
+    private func beginDownloads(using megabitsPerSecond: Double) {
+        guard !selectedApps.isEmpty else { return }
+        withAnimation(.easeInOut(duration: 0.3)) {
+            stage = .downloading
+        }
+        record(String(format: "Preparing %d app previews at %.1f Mbps", selectedApps.count, megabitsPerSecond))
+
+        let appsToPreview = selectedApps
+        Task { @MainActor in
+            do {
+                for app in appsToPreview {
+                    record(String(format: "Starting %@ · %.1f MB", app.name, app.sizeMiB))
+                    let seconds = min(6.0, max(0.8, app.sizeMiB * 8 / megabitsPerSecond * 1.5))
+                    let interval = UInt64(seconds * 100_000_000)
+
+                    for step in 1...10 {
+                        try await Task.sleep(nanoseconds: interval)
+                        appProgress[app.id] = Double(step) / 10
+                        if step.isMultiple(of: 2) {
+                            record("\(app.name) transfer: \(step * 10)%")
+                        }
+                    }
+
+                    record("\(app.name) ready for the app shelf")
+                }
+
+                record("Selected app previews are ready")
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    stage = .complete
+                }
+            } catch {
+                connectionError = error.localizedDescription
+                record("Preview transfer stopped: \(error.localizedDescription)")
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    stage = .appSelection
+                }
+            }
+        }
+    }
+
+    private func resetFlow() {
+        isMeasuring = false
+        stage = .welcome
+        activity.removeAll()
+        appProgress.removeAll()
+        selectedAppNames.removeAll()
+        selectedManager = nil
+        measuredMbps = nil
+        connectionError = nil
+    }
+
+    private func record(_ message: String) {
+        let time = Date.now.formatted(date: .omitted, time: .standard)
+        activity.append(ActivityEvent(time: time, message: message))
+    }
+
+    private static func measureConnectionSpeed() async throws -> Double {
+        let bytes = 524_288
+        guard let url = URL(string: "https://speed.cloudflare.com/__down?bytes=\(bytes)") else {
+            throw SpeedCheckError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
+        request.cachePolicy = .reloadIgnoringLocalCacheData
+        request.timeoutInterval = 20
+
+        let start = Date()
+        let (data, response) = try await URLSession.shared.data(for: request)
+        let duration = max(Date().timeIntervalSince(start), 0.05)
+
+        guard let response = response as? HTTPURLResponse,
+              (200..<300).contains(response.statusCode),
+              data.count == bytes else {
+            throw SpeedCheckError.unexpectedResponse
+        }
+
+        return min(1_000, max(0.1, Double(data.count * 8) / duration / 1_000_000))
     }
 }
