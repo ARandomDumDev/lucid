@@ -364,7 +364,6 @@ private struct LucidBackgroundHTMLView: UIViewRepresentable {
                 return
             }
         }
-}
 
 private enum LucidPalette {
     static let midnight = Color(red: 16.0 / 255.0, green: 20.0 / 255.0, blue: 38.0 / 255.0)
