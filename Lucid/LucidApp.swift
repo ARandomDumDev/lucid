@@ -44,14 +44,10 @@ private enum DeviceProfile {
 
 private enum BootSequencePhase: Equatable {
     case activity
-    case blackout
     case moon
+    case black
     case wordmark
 }
-
-
-import SwiftUI
-import WebKit
 
 private struct LucidBootSequence: View {
     @Environment(\.dismiss) private var dismiss
@@ -272,13 +268,6 @@ private struct LucidBootSequence: View {
     }
 }
 
-private enum BootSequencePhase {
-    case activity
-    case moon
-    case black
-    case wordmark
-}
-
 private struct LucidBackgroundHTMLView: UIViewRepresentable {
     func makeUIView(context: Context) -> WKWebView {
         let configuration = WKWebViewConfiguration()
@@ -338,32 +327,6 @@ private struct LucidBackgroundHTMLView: UIViewRepresentable {
     func updateUIView(_ uiView: WKWebView, context: Context) {
     }
 }
-
-
-        @MainActor
-        private func runSequence() async {
-            for index in logLines.indices {
-                do {
-                    try await Task.sleep(nanoseconds: 420_000_000)
-                } catch {
-                    return
-                }
-                visibleLogCount = index + 1
-            }
-
-            do {
-                try await Task.sleep(nanoseconds: 500_000_000)
-                phase = .blackout
-                try await Task.sleep(nanoseconds: 1_000_000_000)
-                phase = .moon
-                try await Task.sleep(nanoseconds: 1_000_000_000)
-                phase = .blackout
-                try await Task.sleep(nanoseconds: 1_000_000_000)
-                phase = .wordmark
-            } catch {
-                return
-            }
-        }
 
 private enum LucidPalette {
     static let midnight = Color(red: 16.0 / 255.0, green: 20.0 / 255.0, blue: 38.0 / 255.0)
