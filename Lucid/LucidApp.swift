@@ -50,10 +50,10 @@ private struct LucidBootSequence: View {
 
         private var logLines: [String] {
             [
-                "LucidSimulation: sequence started",
+                "LucidConcept: sequence started",
                 "Device: \(DeviceProfile.deviceSummary)",
                 "Style: inspired by \(DeviceProfile.styleRange)",
-                "Session: validating local simulation state",
+                "Session: validating local concept state",
                 "Session: restoring \(managerName) selection",
                 "AppShelf: restoring \(appNames.count) selected tiles",
                 "Assets: resolving package manager mark",
@@ -64,7 +64,7 @@ private struct LucidBootSequence: View {
                 "UI: preparing boot activity surface",
                 "Animation: starting moonlight transition",
                 "Renderer: composing initial frame",
-                "LucidSimulation: ready"
+                "LucidConcept: ready"
             ]
         }
 
@@ -89,7 +89,7 @@ private struct LucidBootSequence: View {
 
                             Spacer()
 
-                            Text("SIMULATION")
+                            Text("CONCEPT")
                                 .font(.system(size: 9, weight: .semibold, design: .monospaced))
                                 .tracking(1)
                                 .foregroundStyle(LucidPalette.blue)
@@ -350,7 +350,7 @@ struct ContentView: View {
                 Circle()
                     .fill(LucidPalette.blue)
                     .frame(width: 6, height: 6)
-                Text("SIMULATION")
+                Text("CONCEPT")
                     .font(.system(size: 9, weight: .semibold, design: .monospaced))
                     .tracking(1)
             }
@@ -537,7 +537,7 @@ struct ContentView: View {
             HStack(spacing: 8) {
                 Image(systemName: "wifi")
                     .foregroundStyle(LucidPalette.blue)
-                Text("Simulated transfer timing follows your connection speed.")
+                Text("Connection speed sets activity pacing.")
                     .foregroundStyle(LucidPalette.muted)
             }
             .font(.system(size: 11))
@@ -556,7 +556,7 @@ struct ContentView: View {
                     Text(connectionError)
                         .font(.system(size: 12))
                         .foregroundStyle(Color.orange)
-                    Button("Continue at typical simulated speed") {
+                    Button("Continue at typical speed") {
                         self.connectionError = nil
                         beginDownloads(using: 35)
                     }
@@ -633,7 +633,7 @@ struct ContentView: View {
                 Text("Preparing your dream")
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(LucidPalette.mist)
-                Text(String(format: "Simulated rate · %.1f Mbps", measuredMbps ?? 35))
+                Text(String(format: "Connection rate · %.1f Mbps", measuredMbps ?? 35))
                     .font(.system(size: 12, design: .monospaced))
                     .foregroundStyle(LucidPalette.muted)
             }
@@ -715,7 +715,7 @@ struct ContentView: View {
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(LucidPalette.mist)
                 Spacer()
-                Text("SIMULATION")
+                Text("CONCEPT")
                     .font(.system(size: 9, weight: .semibold, design: .monospaced))
                     .tracking(0.8)
                     .foregroundStyle(LucidPalette.blue)
@@ -827,7 +827,7 @@ struct ContentView: View {
         withAnimation(.easeInOut(duration: 0.3)) {
             stage = .downloading
         }
-        record(String(format: "Preparing %d simulated app transfers at %.1f Mbps", selectedApps.count, megabitsPerSecond))
+        record(String(format: "Preparing %d app shelf entries at %.1f Mbps", selectedApps.count, megabitsPerSecond))
 
         let appsToTransfer = selectedApps
         Task { @MainActor in
@@ -848,13 +848,13 @@ struct ContentView: View {
                     record("\(app.name) ready for the app shelf")
                 }
 
-                record("Selected apps are ready in the Lucid simulation")
+                record("Selected apps are ready on the Lucid shelf")
                 withAnimation(.easeInOut(duration: 0.3)) {
                     stage = .complete
                 }
             } catch {
                 connectionError = error.localizedDescription
-                record("Simulated transfer stopped: \(error.localizedDescription)")
+                record("Activity stopped: \(error.localizedDescription)")
                 withAnimation(.easeInOut(duration: 0.3)) {
                     stage = .appSelection
                 }
